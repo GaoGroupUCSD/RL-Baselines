@@ -1,4 +1,3 @@
-###### RL
+###### RLalgorithms
 
-My RL agent using various reinforcement learning algorithms.
-# RLalgorithms
+RL agents using various reinforcement learning algorithms.
