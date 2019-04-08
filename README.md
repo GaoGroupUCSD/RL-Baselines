@@ -13,7 +13,7 @@ RL agents using various reinforcement learning algorithms.
 - [DDPG Paper](https://arxiv.org/abs/1509.02971)
 4. Deep Q Learning
 - [dqn.py]
-- [DQN Paper](https://arxiv.org/pdf/1312.5602)
+- [DQN Paper](https://arxiv.org/abs/1312.5602)
 5. Policy Gradient
 - [pg.py]
 - [PG Blog](http://karpathy.github.io/2016/05/31/rl/)
