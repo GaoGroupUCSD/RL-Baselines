@@ -9,9 +9,12 @@ import random
 import os
 import gym
 
+# init a task generator for data fetching
+env = gym.make("CartPole-v0")
+
 ## Hyper Parameters
-STATE_DIM = 4
-ACTION_DIM = 2
+STATE_DIM = env.observation_space.shape[0]
+ACTION_DIM = env.action_space.n
 SAMPLE_NUMS = 1000
 
 FloatTensor = torch.FloatTensor
@@ -37,8 +40,6 @@ class ActorNetwork(nn.Module):
 actor_network = ActorNetwork(STATE_DIM,64,ACTION_DIM)
 actor_network_optim = torch.optim.Adam(actor_network.parameters(),lr = 0.001)
 eps = np.finfo(np.float32).eps.item()
-
-env = gym.make("CartPole-v0")
 
 def roll_out():
     state = env.reset()

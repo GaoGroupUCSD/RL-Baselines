@@ -9,9 +9,12 @@ import random
 import os
 import gym
 
-# Hyper Parameters
-STATE_DIM = 4
-ACTION_DIM = 2
+# init a task generator for data fetching
+env = gym.make("CartPole-v0")
+
+## Hyper Parameters
+STATE_DIM = env.observation_space.shape[0]
+ACTION_DIM = env.action_space.n
 SAMPLE_NUMS = 1000
 TARGET_UPDATE_STEP = 10
 CLIP_PARAM=0.2
@@ -64,10 +67,6 @@ target_value_net.eval()
 
 policy_optimizer = torch.optim.Adam(policy_net.parameters(), lr=1e-2)
 value_optimizer = torch.optim.Adam(value_net.parameters(), lr=1e-3)
-
-
-# init a task generator for data fetching
-env = gym.make("CartPole-v0")
 
 def roll_out():
     state = env.reset()

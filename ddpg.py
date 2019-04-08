@@ -233,8 +233,8 @@ class Trainer:
         batch_reward = Variable(torch.cat(batch_reward)).view(-1, 1)
         batch_next_state = Variable(torch.cat(batch_next_state)).view(-1,self.state_dim)
 
-		# ---------------------- optimize critic ----------------------
-		# Use target actor exploitation policy here for loss evaluation
+        # ---------------------- optimize critic ----------------------
+        # Use target actor exploitation policy here for loss evaluation
         next_action = self.target_actor(batch_next_state).detach()
         max_next_q_values = self.target_critic(batch_next_state, next_action.detach())
         expected_q_values = batch_reward + GAMMA * max_next_q_values
