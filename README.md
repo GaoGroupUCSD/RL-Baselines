@@ -9,11 +9,11 @@ RL agents using various reinforcement learning algorithms.
 - [ppo.py](https://github.com/GaoGroupUCSD/RLalgorithms/blob/master/ppo.py)
 - [PPO Paper](https://arxiv.org/abs/1707.06347)
 3. Deep Deterministic Policy Gradient
-Using replay memory and ornstein uhlenbeck noise
+- Using replay memory and ornstein uhlenbeck noise
 - [ddpg.py](https://github.com/GaoGroupUCSD/RLalgorithms/blob/master/ddpg.py)
 - [DDPG Paper](https://arxiv.org/abs/1509.02971)
 4. Deep Q Learning
-Using replay memory and asynchronous update
+- Using replay memory and asynchronous update
 - [dqn.py](https://github.com/GaoGroupUCSD/RLalgorithms/blob/master/dqn.py)
 - [DQN Paper](https://arxiv.org/abs/1312.5602)
 5. Policy Gradient
