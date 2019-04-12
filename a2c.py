@@ -17,7 +17,7 @@ env = gym.make("CartPole-v0")
 ## Hyper Parameters
 STATE_DIM = env.observation_space.shape[0]
 ACTION_DIM = env.action_space.n
-SAMPLE_NUMS = 1000
+SAMPLE_NUMS = 300
 
 FloatTensor = torch.FloatTensor
 LongTensor = torch.LongTensor 
