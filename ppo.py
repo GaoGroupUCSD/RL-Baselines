@@ -15,7 +15,7 @@ env = gym.make("CartPole-v0")
 ## Hyper Parameters
 STATE_DIM = env.observation_space.shape[0]
 ACTION_DIM = env.action_space.n
-SAMPLE_NUMS = 1000
+SAMPLE_NUMS = 300
 TARGET_UPDATE_STEP = 10
 CLIP_PARAM=0.2
 
@@ -68,13 +68,14 @@ target_value_net.eval()
 policy_optimizer = torch.optim.Adam(policy_net.parameters(), lr=1e-2)
 value_optimizer = torch.optim.Adam(value_net.parameters(), lr=1e-3)
 
-def roll_out():
+def roll_out(sample_nums):
     state = env.reset()
     states = []
     actions = []
     rewards = []
-
-    for step in range(SAMPLE_NUMS):
+    is_done = False
+    final_r = 0
+    for step in range(sample_nums):
         states.append(state)
         log_softmax_action = policy_net(Variable(torch.Tensor([state])))
         softmax_action = torch.exp(log_softmax_action)
@@ -85,19 +86,21 @@ def roll_out():
         rewards.append(reward)
         state = next_state
         if done:
+            is_done = True
             break
+    if not is_done:
+        final_r = value_net(Variable(torch.Tensor([state])))
+    return states,actions,rewards,step,final_r
 
-    return states,actions,rewards,step
-
-def discount_reward(r, gamma):
+def discount_reward(r, gamma, final_r):
     discounted_r = np.zeros_like(r)
-    running_add = 0
+    running_add = final_r
     for t in reversed(range(0, len(r))):
         running_add = running_add * gamma + r[t]
         discounted_r[t] = running_add
     return discounted_r
 
-def update_network(states, actions, rewards):
+def update_network(states, actions, rewards, final_r):
         actions_var = Variable(FloatTensor(actions).view(-1,ACTION_DIM))
         states_var = Variable(FloatTensor(states).view(-1,STATE_DIM))
         # train actor network
@@ -105,7 +108,7 @@ def update_network(states, actions, rewards):
         
         vs = value_net(states_var).detach()
         # calculate qs
-        qs = Variable(torch.Tensor(discount_reward(rewards,0.99)))
+        qs = Variable(torch.Tensor(discount_reward(rewards,0.99,final_r)))
         advantages = qs - vs
 
         log_softmax_actions = policy_net(states_var)
@@ -136,9 +139,9 @@ def main():
     print("reward threshold", env.spec.reward_threshold)
 
     for i_episode in count(1):
-        states,actions,rewards,steps = roll_out()
+        states,actions,rewards,steps,final_r = roll_out(SAMPLE_NUMS)
         running_reward = running_reward * 0.99 + steps * 0.01
-        update_network(states,actions,rewards)
+        update_network(states,actions,rewards,final_r)
         
         if i_episode % 50 == 0:
             print('Episode {}\tLast length: {:5d}\tAverage length: {:.2f}'.format(
