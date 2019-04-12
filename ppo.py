@@ -59,8 +59,8 @@ target_policy_net = ActorNetwork(STATE_DIM,64,ACTION_DIM)
 target_policy_net.load_state_dict(policy_net.state_dict())
 target_policy_net.eval()
 
-value_net = ValueNetwork(input_size = STATE_DIM,hidden_size = 64,output_size = 1)
-target_value_net = ValueNetwork(input_size = STATE_DIM,hidden_size = 64,output_size = 1)
+value_net = ValueNetwork(STATE_DIM,64,1)
+target_value_net = ValueNetwork(STATE_DIM,64,1)
 target_value_net.load_state_dict(value_net.state_dict())
 target_value_net.eval()
 

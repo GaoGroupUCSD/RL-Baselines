@@ -53,7 +53,7 @@ class ValueNetwork(nn.Module):
         return out
 
 # init value network
-value_network = ValueNetwork(input_size = STATE_DIM,hidden_size = 64,output_size = 1)
+value_network = ValueNetwork(STATE_DIM,64,1)
 value_network_optim = torch.optim.Adam(value_network.parameters(),lr=0.01)
 
 # init actor network
