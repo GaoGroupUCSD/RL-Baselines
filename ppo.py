@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.distributions import Categorical
 from torch.autograd import Variable
 from itertools import count
 import numpy as np
@@ -24,27 +25,35 @@ LongTensor = torch.LongTensor
 ByteTensor = torch.ByteTensor 
 Tensor = FloatTensor
 
+def init_weights(m):
+    if type(m) == nn.Linear:
+        nn.init.xavier_uniform_(m.weight)
+        m.bias.data.fill_(0.01)
+
 class ActorNetwork(nn.Module):
 
-    def __init__(self,input_size,hidden_size,action_size):
+    def __init__(self,state_dim,action_dim,hidden_size):
         super(ActorNetwork, self).__init__()
-        self.fc1 = nn.Linear(input_size,hidden_size)
+        self.fc1 = nn.Linear(state_dim,hidden_size)
         self.fc2 = nn.Linear(hidden_size,hidden_size)
-        self.fc3 = nn.Linear(hidden_size,action_size)
+        self.fc3 = nn.Linear(hidden_size,action_dim)
+        self.apply(init_weights)
 
     def forward(self,x):
         out = F.relu(self.fc1(x))
         out = F.relu(self.fc2(out))
         out = F.log_softmax(self.fc3(out), dim=1)
-        return out
+        dist = Categorical(out)
+        return dist
 
 class ValueNetwork(nn.Module):
 
-    def __init__(self,input_size,hidden_size,output_size):
+    def __init__(self,state_dim,action_dim,hidden_size):
         super(ValueNetwork, self).__init__()
-        self.fc1 = nn.Linear(input_size,hidden_size)
+        self.fc1 = nn.Linear(state_dim,hidden_size)
         self.fc2 = nn.Linear(hidden_size,hidden_size)
-        self.fc3 = nn.Linear(hidden_size,output_size)
+        self.fc3 = nn.Linear(hidden_size,action_dim)
+        self.apply(init_weights)
 
     def forward(self,x):
         out = F.relu(self.fc1(x))
@@ -52,20 +61,18 @@ class ValueNetwork(nn.Module):
         out = self.fc3(out)
         return out
 
-
-
-policy_net = ActorNetwork(STATE_DIM,64,ACTION_DIM)
-target_policy_net = ActorNetwork(STATE_DIM,64,ACTION_DIM)
+policy_net = ActorNetwork(STATE_DIM,ACTION_DIM,64)
+target_policy_net = ActorNetwork(STATE_DIM,ACTION_DIM,64)
 target_policy_net.load_state_dict(policy_net.state_dict())
 target_policy_net.eval()
 
-value_net = ValueNetwork(STATE_DIM,64,1)
-target_value_net = ValueNetwork(STATE_DIM,64,1)
+value_net = ValueNetwork(STATE_DIM,1,64)
+target_value_net = ValueNetwork(STATE_DIM,1,64)
 target_value_net.load_state_dict(value_net.state_dict())
 target_value_net.eval()
 
 
-policy_optimizer = torch.optim.Adam(policy_net.parameters(), lr=1e-2)
+policy_optimizer = torch.optim.Adam(policy_net.parameters(), lr=1e-3)
 value_optimizer = torch.optim.Adam(value_net.parameters(), lr=1e-3)
 
 def roll_out(sample_nums):
@@ -77,12 +84,11 @@ def roll_out(sample_nums):
     final_r = 0
     for step in range(sample_nums):
         states.append(state)
-        log_softmax_action = policy_net(Variable(torch.Tensor([state])))
-        softmax_action = torch.exp(log_softmax_action)
-        action = np.random.choice(ACTION_DIM,p=softmax_action.cpu().data.numpy()[0])
-        one_hot_action = [int(k == action) for k in range(ACTION_DIM)]
-        next_state,reward,done,_ = env.step(action)
-        actions.append(one_hot_action)
+        dist = policy_net(Variable(torch.Tensor([state])))
+        action = dist.sample()
+        actions.append(action)
+        action = action.cpu().numpy()
+        next_state,reward,done,_ = env.step(action[0])
         rewards.append(reward)
         state = next_state
         if done:
@@ -101,7 +107,7 @@ def discount_reward(r, gamma, final_r):
     return discounted_r
 
 def update_network(states, actions, rewards, final_r):
-        actions_var = Variable(FloatTensor(actions).view(-1,ACTION_DIM))
+        actions_var = torch.cat(actions)
         states_var = Variable(FloatTensor(states).view(-1,STATE_DIM))
         # train actor network
         policy_optimizer.zero_grad()
@@ -111,12 +117,12 @@ def update_network(states, actions, rewards, final_r):
         qs = Variable(torch.Tensor(discount_reward(rewards,0.99,final_r)))
         advantages = qs - vs
 
-        log_softmax_actions = policy_net(states_var)
-        log_softmax_actions = torch.sum(log_softmax_actions*actions_var,1)
-        old_log_softmax_actions = target_policy_net(states_var)
-        old_log_softmax_actions = torch.sum(old_log_softmax_actions*actions_var,1)
+        dist = policy_net(states_var)
+        log_probs = dist.log_prob(actions_var)
+        old_dist = target_policy_net(states_var)
+        old_log_probs = old_dist.log_prob(actions_var)
 
-        ratio = torch.exp(log_softmax_actions - old_log_softmax_actions)
+        ratio = torch.exp(log_probs - old_log_probs)
         surr1 = ratio * advantages
         surr2 = torch.clamp(ratio, 1.0 - CLIP_PARAM, 1.0 + CLIP_PARAM) * advantages
 
@@ -159,10 +165,9 @@ def main():
         state = env.reset()
         for t in range(1000):
             env.render()
-            pred = policy_net(FloatTensor([state]))
-            values = pred.detach().numpy()
-            action = np.argmax(values)
-            state, reward, done, info = env.step(action)
+            dist = actor_network(FloatTensor([state]))
+            action = dist.sample()
+            state, reward, done, info = env.step(action.cpu().numpy()[0])
             if done:
                 print("Episode finished after {} timesteps".format(t+1))
                 break

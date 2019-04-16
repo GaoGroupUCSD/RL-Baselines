@@ -23,6 +23,11 @@ LongTensor = torch.LongTensor
 ByteTensor = torch.ByteTensor 
 Tensor = FloatTensor
 
+def init_weights(m):
+    if type(m) == nn.Linear:
+        nn.init.xavier_uniform_(m.weight)
+        m.bias.data.fill_(0.01)
+
 class ActorNetwork(nn.Module):
 
     def __init__(self,state_dim,action_dim,hidden_size):
@@ -30,6 +35,7 @@ class ActorNetwork(nn.Module):
         self.fc1 = nn.Linear(state_dim,hidden_size)
         self.fc2 = nn.Linear(hidden_size,hidden_size)
         self.fc3 = nn.Linear(hidden_size,action_dim)
+        self.apply(init_weights)
 
     def forward(self,x):
         out = F.relu(self.fc1(x))
