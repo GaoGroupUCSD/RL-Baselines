@@ -6,7 +6,8 @@ Test mainly on OpenAI gym environments.
 1. Advantage Actor Critic (A2C)
 - Discrete action space version
 - [a2c.py](https://github.com/GaoGroupUCSD/RLalgorithms/blob/master/a2c.py)
-- [A3C Paper](https://arxiv.org/pdf/1602.01783.pdf) 
+- [a3c.py](https://github.com/GaoGroupUCSD/RLalgorithms/blob/master/a3c.py)
+- [A3C Paper](https://arxiv.org/abs/1602.01783) 
 2.  Proximal Policy Optimization 
 - Discrete action space version
 - [ppo.py](https://github.com/GaoGroupUCSD/RLalgorithms/blob/master/ppo.py)
