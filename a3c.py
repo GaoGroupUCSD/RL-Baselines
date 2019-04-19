@@ -11,8 +11,8 @@ import os
 import gym
 
 # Hyper Parameters
-STATE_DIM = 4
-ACTION_DIM = 2
+STATE_DIM = env.observation_space.shape[0]
+ACTION_DIM = env.action_space.n
 SAMPLE_NUMS = 1000
 TARGET_UPDATE = 20
 
