@@ -10,6 +10,9 @@ import random
 import os
 import gym
 
+# init a task generator for data fetching
+env = gym.make("CartPole-v0")
+
 # Hyper Parameters
 STATE_DIM = env.observation_space.shape[0]
 ACTION_DIM = env.action_space.n
@@ -69,8 +72,7 @@ target_actor_network = ActorNetwork(STATE_DIM,ACTION_DIM,64)
 target_actor_network.load_state_dict(actor_network.state_dict())
 actor_network_optim = torch.optim.Adam(actor_network.parameters(),lr=0.01)
 
-# init a task generator for data fetching
-env = gym.make("CartPole-v0")
+
 
 def roll_out(sample_nums):
     state = env.reset()
