@@ -165,7 +165,7 @@ def main():
         state = env.reset()
         for t in range(1000):
             env.render()
-            dist = actor_network(FloatTensor([state]))
+            dist = policy_net(FloatTensor([state]))
             action = dist.sample()
             state, reward, done, info = env.step(action.cpu().numpy()[0])
             if done:
