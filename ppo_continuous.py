@@ -1,36 +1,49 @@
+import math
+import random
+import gym
+import os
+import numpy as np
+from itertools import count
 import torch
 import torch.nn as nn
+import torch.optim as optim
 import torch.nn.functional as F
 from torch.distributions import Normal
 from torch.autograd import Variable
-from itertools import count
-import numpy as np
-import math
-import random
-import os
-import gym
 
-# init a task generator for data fetching
-env = gym.make('Pendulum-v0')
+from common.multiprocessing_env import SubprocVecEnv
+
+num_envs = 16
+env_name = "Pendulum-v0"
+
+def make_env():
+    def make():
+        env = gym.make(env_name)
+        return env
+
+    return make
+
+envs = [make_env() for i in range(num_envs)]
+envs = SubprocVecEnv(envs)
+
+env = gym.make(env_name)
 
 STATE_DIM = env.observation_space.shape[0]
 ACTION_DIM = env.action_space.shape[0]
 ACTION_MAX = env.action_space.high[0]
-SAMPLE_NUMS = 1000
+SAMPLE_NUMS = 100
 TARGET_UPDATE_STEP = 10
-CLIP_PARAM=0.2
+CLIP_PARAM=0.3
 
 FloatTensor = torch.FloatTensor
 LongTensor = torch.LongTensor 
 ByteTensor = torch.ByteTensor 
 Tensor = FloatTensor
 
-
 def init_weights(m):
     if isinstance(m, nn.Linear):
         nn.init.normal_(m.weight, mean=0., std=0.1)
         nn.init.constant_(m.bias, 0.1)
-        
 
 class ActorCritic(nn.Module):
     def __init__(self, state_dim, action_dim, hidden_size, std=0.0):
@@ -59,13 +72,27 @@ class ActorCritic(nn.Module):
         return dist, value
 
 model = ActorCritic(STATE_DIM, ACTION_DIM, 256)
-optimizer = torch.optim.Adam(model.parameters(), lr=3e-4)
+optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 target_model = ActorCritic(STATE_DIM, ACTION_DIM, 256)
 target_model.load_state_dict(model.state_dict())
 target_model.eval()
 
+def test_env(vis=False):
+    state = env.reset()
+    if vis: env.render()
+    done = False
+    total_reward = 0
+    while not done:
+        state = Variable(torch.Tensor(state))
+        dist, _ = model(state)
+        next_state, reward, done, _ = env.step(dist.sample().cpu().numpy())
+        state = next_state
+        if vis: env.render()
+        total_reward += reward
+    return total_reward
+
 def roll_out(sample_nums):
-    observation = env.reset()
+    observation = envs.reset()
     states = []
     actions = []
     log_probs = []
@@ -76,7 +103,7 @@ def roll_out(sample_nums):
     episode_reward = 0
     entropy = 0
     for step in range(sample_nums):
-        env.render()
+        #env.render()
         state = np.float32(observation)
         states.append(state)
         dist, value = model(Variable(torch.Tensor(state)))
@@ -85,7 +112,7 @@ def roll_out(sample_nums):
         log_prob = dist.log_prob(action)
         entropy += dist.entropy().mean()
         action = action.cpu().numpy()
-        new_observation,reward,done,_ = env.step(action)
+        new_observation,reward,done,_ = envs.step(action)
         episode_reward += reward
         log_probs.append(log_prob)
         actions.append(action)
@@ -93,15 +120,8 @@ def roll_out(sample_nums):
         values.append(value)
         new_state = np.float32(new_observation)
         observation = new_observation
-        if done:
-            is_done = True
-            break
-    if not is_done:
-        #final_r = critic_network(Variable(torch.Tensor(new_state)))
-        _, final_r= model(Variable(torch.Tensor(new_state)))
-    print ('REWARDS :- ', episode_reward)
-    return states,actions,rewards,values,step,final_r,log_probs, entropy
-
+    #print ('REWARDS :- ', episode_reward)
+    return states,actions,rewards,values,step,final_r,log_probs,entropy
 
 def discount_reward(r, gamma,final_r):
     discounted_r = np.zeros_like(r)
@@ -117,7 +137,7 @@ def update_network(states, actions, rewards, values, final_r, log_probs, entropy
         vs = torch.cat(values)
         log_probs = torch.cat(log_probs)
         # calculate qs
-        qs = Variable(torch.Tensor(discount_reward(rewards,0.99,final_r)))
+        qs = Variable(torch.Tensor(discount_reward(rewards,0.99,final_r))).view(-1,1)
         advantages = qs - vs
         old_dist, _ = target_model(states_var)
         old_log_probs = old_dist.log_prob(actions_var)
@@ -131,19 +151,33 @@ def update_network(states, actions, rewards, values, final_r, log_probs, entropy
         criterion = nn.MSELoss()
         critic_loss = criterion(vs,target_values)
         loss = 0.5 * critic_loss + actor_loss - 0.001 * entropy
-
+        #print("loss: ", loss)
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
+MAX_EPISODES = 25000
+_ep = 0
+early_stop = False
+test_rewards = []
+threshold_reward = -200
 
-
-MAX_EPISODES = 5000
-MAX_STEPS = 1000
-
-
-for _ep in range(MAX_EPISODES):
+while _ep < MAX_EPISODES and not early_stop:
     observation = env.reset()
-    print ('EPISODE :- ', _ep)
     states,actions,rewards,values,steps,final_r,log_probs, entropy = roll_out(SAMPLE_NUMS)
     update_network(states,actions,rewards,values,final_r,log_probs, entropy)
+    if _ep % 100 == 0:
+        test_reward = np.mean([test_env() for _ in range(10)])
+        test_rewards.append(test_reward)
+        print ('EPISODE :- ', _ep)
+        print("TEST REWARD :- ", test_reward)
+        if test_reward > threshold_reward: early_stop = True
+    # Update the target network
+    if _ep % TARGET_UPDATE_STEP == 0:
+        target_model.load_state_dict(model.state_dict())
+    _ep += 1
+
+test_env(True)
+
+envs.close()
+env.close()
