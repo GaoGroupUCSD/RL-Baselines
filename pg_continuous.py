@@ -148,3 +148,8 @@ while _ep < MAX_EPISODES and not early_stop:
         print("TEST REWARD :- ", test_reward)
         if test_reward > threshold_reward: early_stop = True
     _ep += 1
+
+test_env(True)
+
+env.close()
+envs.close()

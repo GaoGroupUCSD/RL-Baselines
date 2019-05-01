@@ -16,7 +16,7 @@ env = gym.make("CartPole-v0")
 ## Hyper Parameters
 STATE_DIM = env.observation_space.shape[0]
 ACTION_DIM = env.action_space.n
-SAMPLE_NUMS = 1000
+SAMPLE_NUMS = 100
 
 FloatTensor = torch.FloatTensor
 LongTensor = torch.LongTensor 
@@ -48,6 +48,20 @@ class ActorNetwork(nn.Module):
 actor_network = ActorNetwork(STATE_DIM,ACTION_DIM,64)
 actor_network_optim = torch.optim.Adam(actor_network.parameters(),lr = 0.001)
 eps = np.finfo(np.float32).eps.item()
+
+def test_env(vis=False):
+    state = env.reset()
+    if vis: env.render()
+    done = False
+    total_reward = 0
+    while not done:
+        dist = actor_network(FloatTensor([state]))
+        action = dist.sample()
+        next_state, reward, done, _ = env.step(action.cpu().numpy()[0])
+        state = next_state
+        if vis: env.render()
+        total_reward += reward
+    return total_reward
 
 def roll_out(sample_nums):
     state = env.reset()
@@ -94,31 +108,24 @@ def discount_reward(r, gamma):
 
 def main():
     running_reward = 10
-    print("reward threshold", env.spec.reward_threshold)
-
-    for i_episode in count(1):
+    i_episode = 0
+    MAX_EPISODES = 3000
+    early_stop = False
+    test_rewards = []
+    threshold_reward = env.spec.reward_threshold
+    while i_episode < MAX_EPISODES and not early_stop:
         states,actions,rewards,steps = roll_out(SAMPLE_NUMS)
         running_reward = running_reward * 0.99 + steps * 0.01
         update_network(states,actions,rewards)
         
         if i_episode % 50 == 0:
-            print('Episode {}\tLast length: {:5d}\tAverage length: {:.2f}'.format(
-                i_episode, steps+1, running_reward))
-        if running_reward > env.spec.reward_threshold:
-            print("Solved! Running reward is now {} and "
-                  "the last episode runs to {} time steps!".format(running_reward, steps+1))
-            break
-    # test
-    for i_episode in range(10):
-        state = env.reset()
-        for t in range(1000):
-            env.render()
-            dist = actor_network(FloatTensor([state]))
-            action = dist.sample()
-            state, reward, done, info = env.step(action.cpu().numpy()[0])
-            if done:
-                print("Episode finished after {} timesteps".format(t+1))
-                break
+            test_reward = np.mean([test_env() for _ in range(10)])
+            test_rewards.append(test_reward)
+            print ('EPISODE :- ', i_episode)
+            print("TEST REWARD :- ", test_reward)
+            if test_reward > threshold_reward: early_stop = True
+        i_episode += 1
+    test_env(True)
 
     env.close()
 
