@@ -31,7 +31,7 @@ env = gym.make(env_name)
 STATE_DIM = env.observation_space.shape[0]
 ACTION_DIM = env.action_space.shape[0]
 ACTION_MAX = env.action_space.high[0]
-SAMPLE_NUMS = 50
+SAMPLE_NUMS = 100
 
 FloatTensor = torch.FloatTensor
 LongTensor = torch.LongTensor 
@@ -65,7 +65,7 @@ class Actor(nn.Module):
 
 # init actor network
 actor_network = Actor(STATE_DIM,ACTION_DIM,256,0)
-actor_network_optim = torch.optim.Adam(actor_network.parameters(),lr = 3e-4)
+actor_network_optim = torch.optim.Adam(actor_network.parameters(),lr = 0.001)
 eps = np.finfo(np.float32).eps.item()
 
 def test_env(vis=False):
