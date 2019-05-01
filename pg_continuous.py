@@ -151,5 +151,5 @@ while _ep < MAX_EPISODES and not early_stop:
 
 test_env(True)
 
-env.close()
 envs.close()
+env.close()
