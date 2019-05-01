@@ -235,6 +235,7 @@ class Trainer:
         current_q_values = self.critic(batch_state, batch_action)
         critic_loss = F.smooth_l1_loss(current_q_values, expected_q_values.detach())
         critic_loss.backward()
+        print("critic loss",critic_loss)
         self.critic_optimizer.step()
 
         # ---------------------- optimize actor ----------------------
@@ -245,6 +246,7 @@ class Trainer:
         actor_loss = -torch.sum(self.critic(batch_state,current_action))
         actor_loss.backward()
         self.actor_optimizer.step()
+        print("actor loss",actor_loss)
 
         soft_update(self.target_actor, self.actor, TAU)
         soft_update(self.target_critic, self.critic, TAU)
