@@ -2,8 +2,8 @@
 
 RL agents using various reinforcement learning algorithms.
 Test mainly on OpenAI gym environments.
-Currently, all discrete action space versions are working perfectly. 
-Need to improve continuous action space versions.
+Currently, both discrete and continuous action space versions are working perfectly. 
+Continuous versions can solve Pendulum in around 1000 episodes.
 
 1. Advantage Actor Critic (A2C)
 - Discrete action space version
